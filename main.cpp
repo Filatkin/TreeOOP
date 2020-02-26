@@ -1,21 +1,37 @@
 #include <iostream>
 using namespace std;
-struct tree_element{
-    int value;
-    bool color;
-    struct tree_element* left;
-    struct tree_element* right;
-    struct tree_element* parent;
+class Container
+{
+public:
+    virtual void insert(int value) = 0;
+    virtual bool exists(int value) = 0;
+    virtual void remove(int value) = 0;
+
+    virtual void print() = 0;
+
+    virtual ~Container() { };
 };
-struct tree_element* create_tree_element(int a){
-    struct tree_element* el=new struct tree_element;
-    el->color=1;
-    el->value=a;
-    el->left=NULL;
-    el->right=NULL;
-    el->parent=NULL;
-    return el;
-}
+class Tree: public Container {
+private:
+    struct tree_element
+    {
+        int value;
+        bool color;
+        struct tree_element* left;
+        struct tree_element* right;
+        struct tree_element* parent;
+    };
+    struct tree_element* first;
+    struct tree_element* create_tree_element(int a)
+    {
+        struct tree_element* el=new struct tree_element;
+        el->color=1;
+        el->value=a;
+        el->left=NULL;
+        el->right=NULL;
+        el->parent=NULL;
+        return el;
+    }
 void print_tree(struct tree_element* root)
 {
     if(root->left!=NULL)
@@ -429,18 +445,6 @@ void delete_tree(struct tree_element* root)
         delete_tree(root->left);
     delete root;
 }
-class Container
-{
-public:
-    virtual void insert(int value) = 0;
-    virtual bool exists(int value) = 0;
-    virtual void remove(int value) = 0;
-
-    virtual void print() = 0;
-
-    virtual ~Container() { };
-};
-class Tree: public Container {
 public:
     Tree()
     {
@@ -472,8 +476,6 @@ public:
     {
         print_tree(first);
     }
-protected:
-    struct tree_element* first;
 };
 int main()
 {
