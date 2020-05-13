@@ -1,501 +1,224 @@
 #include <iostream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <functional>
+#include <stdexcept>
+
 using namespace std;
-class Container
-{
-public:
-    virtual void insert(int value) = 0;
-    virtual bool exists(int value) = 0;
-    virtual void remove(int value) = 0;
 
-    virtual void print() = 0;
+// Внимание!
+// Вообще-то тесты так писать не принято. Потому что эта реализация на коленке (а) хрупкая и (б) много чего не умеет.
+// Сейчас всё же оставим так, чтобы вы могли всё это использовать, не разбираясь с дополнительными инструментами.
+// Но в реальном проекте используйте Boost.Test или gtest или ещё какой-нибудь аналог.
 
-    virtual ~Container() { };
-};
-class Tree: public Container {
-private:
-    struct tree_element
-    {
-        int value;
-        bool color;
-        struct tree_element* left;
-        struct tree_element* right;
-        struct tree_element* parent;
-    };
-    struct tree_element* first;
-    struct tree_element* create_tree_element(int a)
-    {
-        struct tree_element* el=new struct tree_element;
-        el->color=1;
-        el->value=a;
-        el->left=NULL;
-        el->right=NULL;
-        el->parent=NULL;
-        return el;
-    }
-void print_tree(struct tree_element* root)
+// Подключите свой хэдер вместо VerySimpleList.h
+#include "Container.hpp"
+// Вместо VerySimpleList укажите имя своего класса, который тестируем
+#define IMPL Tree
+
+// Больше ничего править не требуется, просто соберитесь и запуститесь с этим main-ом с тестами
+
+
+bool test1()
 {
-    if(root->left!=NULL)
-        print_tree(root->left);
-    cout<<"Value= "<<root->value<<" Color- "<<root->color<<" Parent- ";
-    if(root->parent!=NULL)
-        cout<<root->parent->value;
-    else
-        cout<<"Does not exist";
-    if(root->right!=NULL)
-    {
-        cout<<" Right- "<<root->right->value;
+    int size = 10;
+    Container<int>* impl = new IMPL<int>();
+    bool test_ok = true;
+
+    for(int i = 0; i < size; i++) {
+        impl->insert(i * i);
     }
-    else
-    {
-        cout<<" Right- NULL";
-    }
-    if(root->left!=NULL)
-    {
-        cout<<" Left- "<<root->left->value<<endl;
-    }
-    else
-    {
-        cout<<" Left- NULL"<<endl;
-    }
-    if(root->parent==NULL) cout<<" # The number upper is the root #"<<endl;
-    if(root->right!=NULL)
-        print_tree(root->right);
-}
-struct tree_element* parent(struct tree_element *el)
-{
-    if(el->parent!=NULL)
-        return el->parent;
-    else
-        return NULL;
-}
-struct tree_element* ded(struct tree_element *el)
-{
-    if(parent(parent(el))!=NULL)
-       return parent(parent(el));
-    else
-        return NULL;
-}
-struct tree_element* sibling(struct tree_element *el)
-{
-    struct tree_element* p=parent(el);
-    if(p==NULL)
-    {
-        return NULL;
-    }
-    if(el==p->left)
-        return p->right;
-    else
-        return p->left;
-}
-struct tree_element* uncle(struct tree_element *el)
-{
-    struct tree_element* p=parent(el);
-    return sibling(p);
-}
-void turn_left(struct tree_element* el)
-{
-    struct tree_element *r=el->right;
-    struct tree_element *p=parent(el);
-    el->right=r->left;
-    r->left=el;
-    el->parent=r;
-    if(el->right!=NULL)
-    {
-       el->right->parent=el;
-    }
-    if(p!=NULL)
-    {
-        if(el==p->left)
-        {
-            p->left=r;
+
+    for(int i = 0; i < size; i++) {
+        if (!impl->exists(i * i)) {
+            test_ok = false;
         }
-        else
-        {
-            p->right=r;
+        impl->remove(i * i);
+        if (impl->exists(i * i)) {
+            test_ok = false;
         }
     }
-    r->parent=p;
+
+    delete impl;
+
+    cout << boolalpha << "Container<int> basic API works: " << test_ok << endl;
+    return test_ok;
 }
-void turn_right(struct tree_element *el)
+
+bool test2()
 {
-    struct tree_element *l=el->left;
-    struct tree_element *p=parent(el);
-    el->left=l->right;
-    l->right=el;
-    el->parent=l;
-    if(el->left!=NULL)
-    {
-       el->left->parent=el;
+    int size = 10;
+    Container<string>* impl = new IMPL<string>();
+    bool test_ok = true;
+
+    for(int i = 0; i < size; i++) {
+        string s = "a";
+        s[0] += i;
+        impl->insert(s);
     }
-    if(p!=NULL)
-    {
-        if(el==p->left)
-        {
-            p->left=l;
+
+    for(int i = 0; i < size; i++) {
+        string s = "a";
+        s[0] += i;
+        if (!impl->exists(s)) {
+            test_ok = false;
         }
-        else
-        {
-            p->right=l;
-        }
-    }
-    l->parent=p;
-}
-void insert_case3(struct tree_element* el)//родитель красный,дядя черный,родитель правый,элемент правый или наоборот
-{
-    struct tree_element* p=parent(el);
-    struct tree_element* d=ded(el);
-    if(d!=NULL && el==p->left)
-    {
-        turn_right(d);
-    }
-    else if(d!=NULL)
-    {
-        turn_left(d);
-    }
-    p->color=0;
-    if(d!=NULL)
-        d->color=1;
-}
-void insert_case2(struct tree_element* el)//родитель красный,дядя черный,родитель левый,элемент правый или наоборот
-{
-    struct tree_element* p=parent(el);
-    struct tree_element* d=ded(el);
-    if(d!=NULL && el==p->right && p==d->left)
-    {
-        turn_left(p);
-        el=el->left;
-    }
-    if(d!=NULL && el==p->left && p==d->right)
-    {
-        turn_right(p);
-        el=el->right;
-    }
-    insert_case3(el);
-}
-void insert_case1(struct tree_element* el)//родитель красный,дядя красный
-{
-    parent(el)->color=0;
-    uncle(el)->color=0;
-    ded(el)->color=1;
-    //повторятется коррекшон, потому что компилятор не дает функциям ссылаться друг на друга
-    if(parent(ded(el))==NULL)
-    {
-        ded(el)->color=0;
-    }
-    else if(uncle(ded(el))!=NULL && uncle(ded(el))->color==1 && parent(ded(el))->color!=0)
-    {
-        insert_case1(ded(el));
-    }
-    else if(parent(ded(el))->color!=0)
-    {
-        insert_case2(ded(el));
-    }
-}
-void DoInsertion(struct tree_element* root,struct tree_element* el)
-{
-    if(el->value>=root->value)
-        {
-            if(root->right==NULL)
-            {
-                root->right=el;
-                el->parent=root;
-            }
-            else
-            {
-                DoInsertion(root->right,el);
-            }
-        }
-    else
-        {
-            if(root->left==NULL)
-            {
-                root->left=el;
-                el->parent=root;
-            }
-            else
-            {
-                DoInsertion(root->left,el);
-            }
-        }
-}
-void Correction(struct tree_element* el)
-{
-    if(parent(el)==NULL)
-    {
-        el->color=0;
-    }
-    else if(uncle(el)!=NULL && uncle(el)->color==1 && parent(el)->color!=0)
-    {
-        insert_case1(el);
-    }
-    else if(parent(el)->color!=0)
-    {
-        insert_case2(el);
-    }
-}
-struct tree_element* insertion(struct tree_element* root,struct tree_element* el)
-{
-    if(el!=root)
-    {
-        DoInsertion(root,el);
-    }
-    Correction(el);
-    while(parent(root)!=NULL)
-    {
-        root=parent(root);
-    }
-    return root;
-}
-void delete_case5(struct tree_element* el)//брат черный,левый ребенок красный,другой черный, el левый ребенок(или наоборот)>вертим право(влево) относительно брата,меняем цвета брата и его нового родителя
-{
-    struct tree_element* s=sibling(el);
-    struct tree_element* p=parent(el);
-    if(s!=NULL)
-        s->color=p->color;
-    else
-        return;
-    p->color=0;
-    if(el==p->left)
-    {
-        if(s!=NULL && s->right!=NULL)
-            s->right->color=0;
-        turn_left(p);
-    }
-    else if(el==p->right)
-    {
-        if(s!=NULL && s->left!=NULL)
-            s->left->color=0;
-        turn_right(p);
-    }
-}
-void delete_case4(struct tree_element*el)//брат черный,правый ребенок красный,другой черный, el левый ребенок(или наоборот)>вертим право(влево) относительно родителя,меняем цвета брата и его нового родителя
-{
-    struct tree_element* s=sibling(el);
-    struct tree_element* p=parent(el);
-    if(s!=NULL && s->color==0)
-    {
-        if(el==p->left && s->right!=NULL && s->left!=NULL && s->right->color==0 && s->left->color==1)
-        {
-            s->color=1;
-            s->left->color=0;
-            turn_right(s);
-        }
-        else if(el==p->left && s->right!=NULL && s->left!=NULL && s->right->color==1 && s->left->color==0)
-        {
-            s->color=1;
-            s->left->color=0;
-            turn_left(s);
+        impl->remove(s);
+        if (impl->exists(s)) {
+            test_ok = false;
         }
     }
-    else
-    {
-        delete_case5(el);
-    }
+
+    delete impl;
+
+    cout << boolalpha << "Container<string> basic API works: " << test_ok << endl;
+    return test_ok;
 }
-void delete_case3(struct tree_element* el)//брат,дети брата черные,родитель крансый->меняем местами цвета ролителя и брата
+
+bool test5()
 {
-    struct tree_element* s=sibling(el);
-    struct tree_element* p=parent(el);
-    if(s!=NULL && s->color==0 && s->right!=NULL && s->left!=NULL && s->right->color==0 && s->left->color==0 && p->color==1)
-    {
-        s->color=1;
-        p->color=0;
+    bool test_ok = true;
+
+    int size = 10;
+
+    IMPL<int> impl;
+    for(int i = 0; i < size; i++) {
+        impl.insert(i);
     }
-    else
-    {
-        delete_case4(el);
-    }
+
+    cout << boolalpha << "Looking for non-existing element works: " << (!impl.exists(42)) << endl;
+    return test_ok;
 }
-void delete_case2(struct tree_element* el)//родитель,брат,дети брата черные->перекрасим брата в красный
+
+bool test6()
 {
-    struct tree_element* s=sibling(el);
-    struct tree_element* p=parent(el);
-    if(s!=NULL && s->color==0 && s->left!=NULL && s->right!=NULL && s->left->color==0 && s->right->color==0 && p->color==0)
-    {
-        s->color=1;
-        if(p->parent!=NULL)
-        {
-            //т.к. компилятор не дает ссылаться на функцию,которая ниже в программе,копирую все сюда и грущу
-            struct tree_element* s=sibling(p);
-            struct tree_element* p1=parent(p);
-            if(s->color==1)
-            {
-                (p1)->color=1;
-                s->color=0;
-                if(p==p1->left)
-                {
-                turn_left(p1);
-                }
-                else
-                {
-                turn_right(p1);
-                }
-            }
-            delete_case2(p);
-        }
+    bool test_ok = true;
+
+    int size = 10;
+
+    IMPL<int> impl;
+    for(int i = 0; i < size; i++) {
+        impl.insert(i);
     }
-    else
-    {
-    delete_case3(el);
-    }
+    impl.remove(42);
+
+    cout << boolalpha << "Calling remove() for non-existing element does not die: " << (test_ok) << endl;
+    return test_ok;
 }
-void delete_case1(struct tree_element* el)////брат красный->меняем цвета родителя и брата,поворачиваем
+
+bool test7()
 {
-    struct tree_element* s=sibling(el);
-    struct tree_element* p=parent(el);
-    if(s!=NULL && s->color==1)
-    {
-        p->color=1;
-        s->color=0;
-        if(el==p->left)
-        {
-            turn_left(p);
-        }
-        else
-        {
-            turn_right(p);
-        }
-    }
-    delete_case2(el);
+    bool test_ok = true;
+
+    IMPL<int> impl;
+    impl.exists(42);
+    impl.remove(42);
+
+    //vector<int> from_impl;
+    //for(const auto& el: impl)
+    //    from_impl.push_back(el);
+
+    cout << boolalpha << "Empty container does not die: " << (test_ok) << endl;
+    return test_ok;
 }
-struct tree_element* Min(struct tree_element* el)
+
+bool test8()
 {
-    if(el->left!=NULL)
-    {
-        return Min(el->left);
+    bool test_ok = true;
+
+    int size = 10;
+    vector<int> reference;
+    vector<int> from_impl;
+
+    IMPL<int> impl;
+    for(int i = 0; i < size; i++) {
+        impl.insert(i);
+        reference.push_back(i);
     }
-    else
-    {
-        return el;
+
+    int to_delete = int(size / 2);
+    auto position = find(reference.begin(), reference.end(), to_delete);
+    reference.erase(position);
+    impl.remove(to_delete);
+
+    //for(const auto& el: impl)
+    //    from_impl.push_back(el);
+    //
+    //sort(reference.begin(), reference.end());
+    //sort(from_impl.begin(), from_impl.end());
+
+    for(int i = 0; i < size; i++) {
+        test_ok = test_ok && (i != to_delete ? impl.exists(i) : !impl.exists(i));
     }
+
+    cout << boolalpha << "Elements are still reachable after remove(): " << (test_ok) << endl;
+    return test_ok;
 }
-void replace_el(struct tree_element* el,struct tree_element* child)
+
+bool test9()
 {
-    struct tree_element* p=parent(el);
-    child->parent=p;
-    if(p->left==el)
-        p->left=child;
-    else
-        p->right=child;
-    return;
+    bool test_ok = true;
+
+    int size = 10;
+    vector<int> reference;
+    vector<int> from_impl;
+
+    IMPL<int> impl;
+    for(int i = 0; i < size; i++) {
+        impl.insert(i);
+        impl.insert(i);
+        impl.insert(i);
+        reference.push_back(i);
+        reference.push_back(i);
+        reference.push_back(i);
+    }
+
+    //for(const auto& el: impl)
+    //    from_impl.push_back(el);
+    //
+    //sort(reference.begin(), reference.end());
+    //sort(from_impl.begin(), from_impl.end());
+
+    cout << boolalpha << "Duplicate values are possible: " << (test_ok) << endl;
+    return test_ok;
 }
-void Delete(struct tree_element* el)
+
+bool test10()
 {
-    if(el->right!=NULL && el->left!=NULL)
-    {
-        el->value=(Min(el->right))->value;
-        Delete(Min(el->right));
-        return;
-    }
-    struct tree_element* child;
-    if(el->right==NULL && el->left==NULL)
-        child=NULL;
-    else if(el->right==NULL)
-        child=el->left;
-    else
-        child=el->right;
-    if(child!=NULL)
-        replace_el(el,child);
-    if(child==NULL)
-    {
-        delete_case1(el);
-        if(el->parent->right==el)
-            el->parent->right=NULL;
-        else
-            el->parent->left=NULL;
-    }
-    if(el->color==0 && child!=NULL)
-    {
-        if(child->color==1)
-        {
-            child->color=0;
-        }
-        else
-        {
-            if(child->parent!=NULL)
-                delete_case1(child);
-        }
-    }
-    delete el;
+    bool test_ok = true;
+
+    IMPL<int> impl1;
+    impl1.insert(42);
+    impl1.insert(0);
+    impl1.remove(42);
+
+    IMPL<int> impl2;
+    impl2.insert(0);
+    impl2.insert(42);
+    impl2.remove(42);
+
+    test_ok = (impl1.exists(0) && impl2.exists(0));
+
+    cout << boolalpha << "Removing head element probably works: " << (test_ok) << endl;
+    return test_ok;
 }
-struct tree_element* search_tree_element(struct tree_element* root,int a)
-{
-    if((root->value==a))
-    {
-        return root;
-    }
-    if((root->value)>a && root->left!=NULL)
-        return search_tree_element(root->left,a);
-    if(root->value<a && root->right!=NULL)
-        return search_tree_element(root->right,a);
-    return NULL;
-}
-struct tree_element* search_root(struct tree_element* el)
-{
-    if(el->parent!=NULL)
-        return search_root(el->parent);
-    else
-        return el;
-}
-void delete_tree(struct tree_element* root)
-{
-    if(root->right!=NULL)
-        delete_tree(root->right);
-    if(root->left!=NULL)
-        delete_tree(root->left);
-    delete root;
-}
-public:
-    Tree()
-    {
-        first=NULL;
-    }
-    ~Tree()
-    {
-        delete_tree(first);
-    }
-    void insert(int value)
-    {
-        if(first!=NULL)
-            first=insertion(first, create_tree_element(value));
-        else
-            first=create_tree_element(value);
-    }
-    bool exists(int value)
-    {
-        if(search_tree_element(first,value)!=NULL)
-            return true;
-        else return false;
-    }
-    void remove(int value)
-    {
-        Delete(search_tree_element(first,value));
-        first=search_root(first);
-    }
-    void print()
-    {
-        print_tree(first);
-    }
-};
+
 int main()
 {
-    Container* c=new Tree();
-    for(int i = 1; i < 10; i++)
-        c->insert(i*i);
-    cout << "Container after creation:" << endl;
-    c->print();
+    vector<function<bool(void)>> tests = {test1, test2, test5, test6, test7, test8, test9, test10};
 
-    if(c->exists(25))
-        cout << "Search for value 25: found" << endl;
+    bool verdict = true;
 
-    if(!c->exists(111))
-        cout << "Search for value 111: not found" << endl;
+    unsigned int count = 1;
+    for(auto test : tests) {
+        cout << count << ". ";
+        verdict = verdict && test();
+        count++;
+    }
 
-    c->remove(25);
-    cout << "Container after deletion of the element:" << endl;
-    c->print();
+    cout << "=================================" << endl;
+    cout << "Run " << (count - 1) << " tests. Verdict: " << (verdict ? "PASSED" : "FAILED") << endl;
 
-    delete c;
     return 0;
 }
-
